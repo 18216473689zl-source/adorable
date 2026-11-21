@@ -163,7 +163,7 @@
       master.gain.value=0.0001;
       master.connect(AC.destination);
       // 慢慢淡入，音量很低
-      master.gain.exponentialRampToValueAtTime(0.05, AC.currentTime+4);
+      master.gain.exponentialRampToValueAtTime(0.12, AC.currentTime+4);
     }catch(e){ AC=null; }
     return AC;
   }
@@ -260,9 +260,9 @@
       var t=AC.currentTime;
       master.gain.cancelScheduledValues(t);
       master.gain.setValueAtTime(master.gain.value,t);
-      master.gain.exponentialRampToValueAtTime(muted?0.0001:0.05, t+0.4);
+      master.gain.exponentialRampToValueAtTime(muted?0.0001:0.12, t+0.4);
     }
-    e.currentTarget.textContent = muted ? '♪̸' : '♪';
+    e.currentTarget.textContent = muted ? '×' : '♪';
   });
 
   render();
