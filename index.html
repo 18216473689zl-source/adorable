@@ -165,6 +165,34 @@
   .card{animation:breathe 7.5s ease-in-out infinite}
   @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.006)}}
   @media (prefers-reduced-motion: reduce){.card{animation:none}}
+
+  /* 小猫表情 */
+  .mascot.wink .eyes circle:first-child{transform:scaleY(.12);transform-origin:41px 54px}
+  .mascot.surprised .eyes{transform:scale(1.18);transform-origin:50px 54px}
+  .mascot.tilt svg{transform:rotate(9deg);transform-origin:50px 70px;transition:transform .5s ease}
+  .mascot svg{transition:transform .5s ease}
+
+  /* 彩蛋 */
+  #egg{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    padding:0 34px;background:rgba(61,36,48,.35);backdrop-filter:blur(6px);
+    opacity:0;visibility:hidden;transition:opacity .45s ease,visibility .45s;z-index:20}
+  #egg.on{opacity:1;visibility:visible}
+  #egg .box{background:rgba(255,252,251,.97);border-radius:26px;padding:34px 28px;
+    max-width:430px;text-align:center;box-shadow:0 24px 60px rgba(61,36,48,.25);
+    border:2px solid #fff}
+  #egg .q{font-size:20px;line-height:1.95;letter-spacing:.06em;font-weight:600}
+  #egg .who{margin-top:16px;font-size:12px;letter-spacing:.3em;color:#b98a9c}
+
+  /* 分享按钮 */
+  #share{position:fixed;left:50%;transform:translateX(-50%);bottom:max(66px,calc(env(safe-area-inset-bottom) + 60px));
+    padding:11px 24px;border-radius:999px;font-size:13px;font-weight:600;letter-spacing:.12em;
+    color:#fff;background:linear-gradient(135deg,#e79bb2,#d98aa0);z-index:9;
+    box-shadow:0 12px 28px rgba(217,138,160,.4);display:none}
+  #share.on{display:block;animation:rise .6s ease both}
+  #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(120px,calc(env(safe-area-inset-bottom) + 110px));
+    background:rgba(61,36,48,.85);color:#fff;font-size:13px;padding:9px 18px;border-radius:999px;
+    opacity:0;transition:opacity .3s;z-index:21;pointer-events:none}
+  #toast.on{opacity:1}
 </style>
 </head>
 <body>
@@ -243,6 +271,12 @@
 </div>
 
 <div class="hint" id="hint">轻触继续</div>
+<div id="share">发给谢语晴</div>
+<div id="toast"></div>
+<div id="egg"><div class="box">
+  <div class="q">其实还有一句没写出来：<br>每次想夸你，最后都变成想见你。</div>
+  <div class="who">长按彩蛋 · 轻触关闭</div>
+</div></div>
 
 <script>
 (function(){
@@ -384,6 +418,8 @@
   }
 
   /* 翻页 */
+  var mascot=document.querySelector('.mascot');
+  var shareBtn=document.getElementById('share');
   var scenes=[].slice.call(document.querySelectorAll('.scene'));
   var hint=document.getElementById('hint');
   var bar=document.getElementById('bar');
@@ -402,13 +438,19 @@
     });
     bar.style.width=Math.round(idx/(scenes.length-1)*100)+'%';
     hint.style.display = idx===scenes.length-1 ? 'none' : 'block';
+    shareBtn.classList.toggle('on', idx===scenes.length-1);
+    if(mascot){
+      mascot.classList.remove('wink','surprised','tilt');
+      var mood=['wink','surprised','tilt'][Math.floor(Math.random()*3)];
+      void mascot.offsetWidth;
+      mascot.classList.add(mood);
+      setTimeout(function(){ mascot.classList.remove(mood); },1500);
+    }
   }
   function next(){
     if(idx>=scenes.length-1) return;
     idx++;
-    if(started && !muted){
-      if(idx===scenes.length-1) endMelody(); else pageDing();
-    }
+    if(started && !muted && idx===scenes.length-1) endMelody();
     render();
   }
 
@@ -425,10 +467,57 @@
     }
   }
 
+  /* 点击音高随位置 */
+  function tapTone(y){
+    if(!AC||muted) return;
+    var f=523.25*Math.pow(2,(1-y/innerHeight)*0.75);
+    var t0=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
+    o.type='sine'; o.frequency.value=f;
+    g.gain.setValueAtTime(0.0001,t0);
+    g.gain.exponentialRampToValueAtTime(0.05,t0+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+0.45);
+    o.connect(g); g.connect(master); o.start(t0); o.stop(t0+0.5);
+  }
+
+  /* 长按彩蛋 */
+  var pressTimer=null, longFired=false;
+  var egg=document.getElementById('egg');
+  function showEgg(){ egg.classList.add('on'); }
+  function hideEgg(){ egg.classList.remove('on'); }
+
+  document.body.addEventListener('pointerdown',function(e){
+    if(e.target && (e.target.id==='sound'||e.target.id==='share')) return;
+    longFired=false;
+    clearTimeout(pressTimer);
+    pressTimer=setTimeout(function(){ longFired=true; showEgg(); }, 1200);
+  });
+  document.body.addEventListener('pointermove',function(){ clearTimeout(pressTimer); });
+  window.addEventListener('pointerup',function(){ clearTimeout(pressTimer); });
+
+  /* 分享 */
+  var shareBtn=document.getElementById('share');
+  var toast=document.getElementById('toast');
+  function showToast(t){
+    toast.textContent=t; toast.classList.add('on');
+    setTimeout(function(){ toast.classList.remove('on'); },1600);
+  }
+  shareBtn.addEventListener('pointerup',function(e){
+    e.stopPropagation();
+    var data={title:'谢语晴',text:'有句话想给你看',url:location.href};
+    if(navigator.share){
+      navigator.share(data).catch(function(){});
+    }else{
+      try{ navigator.clipboard.writeText(location.href); showToast('链接已复制'); }
+      catch(err){ showToast(location.href); }
+    }
+  });
+
   document.body.addEventListener('pointerup',function(e){
-    if(e.target && e.target.id==='sound') return;
+    if(e.target && (e.target.id==='sound'||e.target.id==='share')) return;
+    if(egg.classList.contains('on')){ hideEgg(); return; }
+    if(longFired){ longFired=false; return; }
     startMusic();
-    if(e.clientX) petalsAt(e.clientX,e.clientY);
+    if(e.clientX){ petalsAt(e.clientX,e.clientY); tapTone(e.clientY); }
     next();
   });
   document.getElementById('sound').addEventListener('pointerup',function(e){
@@ -455,7 +544,6 @@
   window.addEventListener('pointerdown',function(e){ parallax(e.clientX,e.clientY); });
 
   /* 最后一屏让小猫跳一下 */
-  var mascot=document.querySelector('.mascot');
   var oldRender=render;
   render=function(){
     oldRender();
