@@ -149,11 +149,25 @@
     0%{transform:translate(0,0) scale(1);opacity:.95}
     100%{transform:translate(var(--dx),var(--dy)) scale(.3) rotate(90deg);opacity:0}
   }
+
+  #sky{position:fixed;inset:0;pointer-events:none;z-index:0;
+    transition:transform .35s cubic-bezier(.2,.7,.2,1);will-change:transform}
+
+  .mascot.jump{animation:jump .9s cubic-bezier(.3,1.4,.5,1)}
+  @keyframes jump{
+    0%{transform:rotate(-8deg) translateY(0) scale(1)}
+    28%{transform:rotate(-2deg) translateY(-20px) scale(1.1)}
+    58%{transform:rotate(-11deg) translateY(3px) scale(.95)}
+    100%{transform:rotate(-8deg) translateY(0) scale(1)}
+  }
+  .mascot.jump + .corner.tl{animation:tw .3s ease-in-out 3}
 </style>
 </head>
 <body>
-<div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div>
-<div class="blob b1"></div><div class="blob b2"></div>
+<div id="sky">
+  <div class="cloud c1"></div><div class="cloud c2"></div><div class="cloud c3"></div>
+  <div class="blob b1"></div><div class="blob b2"></div>
+</div>
 <div id="petals"></div>
 
 <div id="sound">♪</div>
@@ -370,6 +384,28 @@
     e.currentTarget.textContent = muted ? '×' : '♪';
   });
 
+  /* 背景跟随手指/鼠标 */
+  var sky=document.getElementById('sky');
+  function parallax(x,y){
+    var dx=(x/innerWidth-0.5)*16;
+    var dy=(y/innerHeight-0.5)*12;
+    sky.style.transform='translate('+dx.toFixed(1)+'px,'+dy.toFixed(1)+'px)';
+  }
+  window.addEventListener('pointermove',function(e){ parallax(e.clientX,e.clientY); });
+  window.addEventListener('pointerdown',function(e){ parallax(e.clientX,e.clientY); });
+
+  /* 最后一屏让小猫跳一下 */
+  var mascot=document.querySelector('.mascot');
+  var oldRender=render;
+  render=function(){
+    oldRender();
+    if(idx===scenes.length-1 && mascot){
+      mascot.classList.remove('jump');
+      void mascot.offsetWidth;
+      mascot.classList.add('jump');
+      setTimeout(function(){ mascot.classList.remove('jump'); },950);
+    }
+  };
   render();
 })();
 </script>
